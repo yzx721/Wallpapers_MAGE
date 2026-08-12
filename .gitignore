@@ -1,0 +1,11 @@
+node_modules
+# 环境变量
+.env
+# Prisma 生成文件
+/src/generated/prisma
+# 日志文件
+/logs
+!/logs/.gitkeep
+
+# 上传的图片（本地测试用，正式环境不提交）
+/uploads

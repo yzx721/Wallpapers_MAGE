@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================
+// 用户
+// ============================================
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(50)
+  email        String     @unique @db.VarChar(200)
+  passwordHash String     @map("password_hash") @db.VarChar(200)
+  avatarUrl    String?    @map("avatar_url") @db.VarChar(500)
+  bio          String?    @db.VarChar(500)
+  isOfficial   Boolean    @default(false) @map("is_official")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  images    Image[]
+  albums    Album[]
+  linkPosts LinkPost[]
+  likes     Like[]
+  comments  Comment[]
+
+  @@map("users")
+}
+
+// ============================================
+// 图片
+// ============================================
+model Image {
+  id            Int         @id @default(autoincrement())
+  userId        Int         @map("user_id")
+  title         String      @db.VarChar(200)
+  description   String?     @db.Text
+  filePath      String      @map("file_path") @db.VarChar(500)
+  thumbnailPath String?     @map("thumbnail_path") @db.VarChar(500)
+  width         Int?
+  height        Int?
+  fileSize      Int?        @map("file_size")
+  tags          Json?       @default("[]")
+  colorTone     String?     @map("color_tone") @db.VarChar(20)
+  source        ImageSource @default(upload)
+  apiSourceUrl  String?     @map("api_source_url") @db.VarChar(500)
+  viewCount     Int         @default(0) @map("view_count")
+  downloadCount Int         @default(0) @map("download_count")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_image_user")
+  albumImages  AlbumImage[]
+  coverOfAlbum Album[]      @relation("AlbumCover")
+  linkPostPreviews LinkPost[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("images")
+  @@fulltext([title, description])
+}
+
+enum ImageSource {
+  upload
+  api
+}
+
+// ============================================
+// 套图
+// ============================================
+model Album {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  title        String   @db.VarChar(200)
+  description  String?  @db.Text
+  coverImageId Int?     @map("cover_image_id")
+  tags         Json    @default("[]")
+  viewCount    Int      @default(0) @map("view_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_album_user")
+  coverImage Image?       @relation("AlbumCover", fields: [coverImageId], references: [id], onDelete: SetNull, map: "fk_album_cover")
+  images     AlbumImage[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("albums")
+  @@fulltext([title, description])
+}
+
+// ============================================
+// 套图 ↔ 图片 关联
+// ============================================
+model AlbumImage {
+  id        Int @id @default(autoincrement())
+  albumId   Int @map("album_id")
+  imageId   Int @map("image_id")
+  sortOrder Int @default(0) @map("sort_order")
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade, map: "fk_ai_album")
+  image Image @relation(fields: [imageId], references: [id], onDelete: Cascade, map: "fk_ai_image")
+
+  @@unique([albumId, imageId], map: "uk_album_image")
+  @@index([albumId])
+  @@index([imageId])
+  @@map("album_images")
+}
+
+// ============================================
+// 网盘链接帖
+// ============================================
+model LinkPost {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  title          String   @db.VarChar(200)
+  description    String?  @db.Text
+  previewImageId Int?     @map("preview_image_id")
+  linkUrl        String   @map("link_url") @db.VarChar(500)
+  linkPassword   String?  @map("link_password") @db.VarChar(50)
+  linkType       LinkType @default(other) @map("link_type")
+  tags           Json?    @default("[]")
+  viewCount      Int      @default(0) @map("view_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_lp_user")
+  previewImage Image? @relation(fields: [previewImageId], references: [id], onDelete: SetNull, map: "fk_lp_preview")
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("link_posts")
+  @@fulltext([title, description])
+}
+
+enum LinkType {
+  baidu
+  aliyun
+  quark
+  other
+}
+
+// ============================================
+// 点赞 — 通过 targetType+targetId 指向任意内容
+// 注意：Prisma 不支持跨表多态 FK，所以这里只指回 user
+// ============================================
+model Like {
+  id         Int        @id @default(autoincrement())
+  userId     Int        @map("user_id")
+  targetType LikeTarget @map("target_type")
+  targetId   Int        @map("target_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_like_user")
+
+  @@unique([userId, targetType, targetId], map: "uk_like")
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@map("likes")
+}
+
+enum LikeTarget {
+  image
+  album
+  link_post
+}
+
+// ============================================
+// 评论 — 同样多态，只指回 user 和 parent
+// ============================================
+model Comment {
+  id         Int           @id @default(autoincrement())
+  userId     Int           @map("user_id")
+  targetType CommentTarget @map("target_type")
+  targetId   Int           @map("target_id")
+  parentId   Int?          @map("parent_id")
+  content    String        @db.Text
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "fk_comment_user")
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade, map: "fk_comment_parent")
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+enum CommentTarget {
+  image
+  album
+  link_post
+}

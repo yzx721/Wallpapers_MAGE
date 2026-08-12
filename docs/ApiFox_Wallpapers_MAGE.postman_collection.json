@@ -1,0 +1,267 @@
+{
+  "info": {
+    "name": "Wallpapers MAGE API",
+    "description": "后端接口集合，baseURL = http://localhost:3000/v1。登录后把 accessToken 填到 collection 变量 `accessToken` 中，自动带到需要鉴权的接口。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "1" },
+    { "key": "imageId", "value": "1" },
+    { "key": "albumId", "value": "1" },
+    { "key": "linkPostId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "用户 / 认证",
+      "item": [
+        {
+          "name": "注册",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/user/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"12345678\"\n}"
+            }
+          }
+        },
+        {
+          "name": "登录",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/user/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"12345678\"\n}"
+            }
+          }
+        },
+        {
+          "name": "刷新 Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{refreshToken}}" }],
+            "url": "{{baseUrl}}/user/token/refresh"
+          }
+        },
+        {
+          "name": "用户详情",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/{{userId}}"
+          }
+        },
+        {
+          "name": "用户作品",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/user/{{userId}}/work?page=1&limit=10"
+          }
+        }
+      ]
+    },
+    {
+      "name": "图片",
+      "item": [
+        {
+          "name": "图片列表",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/images?page=1&limit=10&sort=popular&tags=风景"
+          }
+        },
+        {
+          "name": "图片详情",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/images/{{imageId}}"
+          }
+        },
+        {
+          "name": "上传图片",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/images",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "/C:/Users/Pictures/sample.jpg" },
+                { "key": "title", "value": "测试图片", "type": "text" },
+                { "key": "description", "value": "这是一张测试图片", "type": "text" },
+                { "key": "tags", "value": "风景,4K,极简", "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "删除图片",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/images/{{imageId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "套图",
+      "item": [
+        {
+          "name": "套图列表",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/albums?page=1&limit=10&sort=popular"
+          }
+        },
+        {
+          "name": "套图详情",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/albums/{{albumId}}"
+          }
+        },
+        {
+          "name": "创建套图",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/albums",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"测试套图\",\n  \"description\": \"精选测试图片\",\n  \"tags\": [\"极简\", \"风景\"],\n  \"coverImageId\": 1,\n  \"imageList\": [{\"id\": 1}, {\"id\": 2}]\n}"
+            }
+          }
+        },
+        {
+          "name": "删除套图",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/albums/{{albumId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "链接帖",
+      "item": [
+        {
+          "name": "链接帖列表",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/link-posts?page=1&limit=10"
+          }
+        },
+        {
+          "name": "链接帖详情",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/link-posts/{{linkPostId}}"
+          }
+        },
+        {
+          "name": "发布链接帖",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/link-posts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"测试网盘资源\",\n  \"description\": \"200张精选壁纸\",\n  \"linkType\": \"baidu\",\n  \"linkUrl\": \"https://pan.baidu.com/s/1xxx\",\n  \"linkPassword\": \"abcd\",\n  \"tags\": [\"赛博朋克\", \"4K\"],\n  \"previewImageId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "删除链接帖",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/link-posts/{{linkPostId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "搜索 / 标签",
+      "item": [
+        {
+          "name": "搜索",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/search?keyword=赛博朋克&type=image&page=1&limit=10"
+          }
+        },
+        {
+          "name": "标签列表",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/tags"
+          }
+        }
+      ]
+    },
+    {
+      "name": "点赞 / 评论",
+      "item": [
+        {
+          "name": "点赞图片",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/images/{{imageId}}/like"
+          }
+        },
+        {
+          "name": "点赞套图",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/albums/{{albumId}}/like"
+          }
+        },
+        {
+          "name": "点赞链接帖",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/link-posts/{{linkPostId}}/like"
+          }
+        },
+        {
+          "name": "图片评论列表",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/images/{{imageId}}/comments?order=newest"
+          }
+        },
+        {
+          "name": "发表评论",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/images/{{imageId}}/comments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"这条评论来自 ApiFox 测试\",\n  \"parentId\": null\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
