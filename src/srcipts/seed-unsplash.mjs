@@ -1,15 +1,29 @@
 import 'dotenv/config'
 import bcrypt from 'bcryptjs'
-import prisma from './src/utils/prisma.js'
+import prisma from '../utils/prisma.js'
 
 const ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY
+// 每次运行随机抽取，配合随机翻页，反复跑就能持续加图
 const KEYWORDS = [
   'nature', 'cyberpunk', 'minimal', 'architecture', 'neon', 'ocean', 'mountain', 'abstract',
   'space', 'galaxy', 'night', 'sunset', 'city', 'forest', 'water', 'desert',
   'winter', 'aurora', 'technology', 'dark', 'travel', 'portrait', 'texture', 'vintage',
   'macro', 'car', 'flower', 'beach', 'sky', 'snow', 'rain', 'fire',
+  'animals', 'birds', 'cats', 'dogs', 'wildlife', 'moon', 'stars', 'clouds',
+  'fog', 'leaf', 'grass', 'rock', 'canyon', 'valley', 'river', 'lake',
+  'island', 'tropical', 'japan', 'tokyo', 'kyoto', 'paris', 'venice', 'new-york',
+  'coffee', 'food', 'drink', 'fruit', 'light', 'shadow', 'silhouette', 'neon-city',
 ]
 const PER_PAGE = 30
+
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 async function getBotUser() {
   const existing = await prisma.user.findUnique({ where: { username: 'wallpaper-bot' } })
@@ -20,25 +34,32 @@ async function getBotUser() {
   })
 }
 
-async function fetchKeyword(keyword) {
-  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=${PER_PAGE}`
+async function fetchKeyword(keyword, page) {
+  const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(keyword)}&per_page=${PER_PAGE}&page=${page}`
   const res = await fetch(url, { headers: { Authorization: `Client-ID ${ACCESS_KEY}` } })
+  if (res.status === 429) throw new Error('Unsplash 429 限流，等一会儿再跑')
   if (!res.ok) throw new Error(`Unsplash ${res.status}: ${await res.text()}`)
   const data = await res.json()
   return data.results || []
 }
+
+// 用法：node/tsx seed-unsplash.mjs [批次数]  默认 12，受 50 次/小时 限流约束
+const BATCH = Math.max(1, Number(process.argv[2]) || 12)
+const picked = shuffle(KEYWORDS).slice(0, BATCH).map((kw) => ({ kw, page: 1 + Math.floor(Math.random() * 3) }))
 
 let created = 0
 let updated = 0
 let skipped = 0
 const user = await getBotUser()
 
-for (const kw of KEYWORDS) {
+console.log(`本次抽取 ${picked.length} 个主题：`, picked.map((p) => `${p.kw}#${p.page}`).join(', '))
+
+for (const { kw, page } of picked) {
   let photos
   try {
-    photos = await fetchKeyword(kw)
+    photos = await fetchKeyword(kw, page)
   } catch (e) {
-    console.log(`[${kw}] fetch failed:`, e.message.slice(0, 90))
+    console.log(`[${kw}#${page}] fetch failed:`, e.message.slice(0, 90))
     continue
   }
   for (const p of photos) {
@@ -77,7 +98,7 @@ for (const kw of KEYWORDS) {
     await prisma.image.create({ data })
     created++
   }
-  console.log(`[${kw}] fetched ${photos.length} → created=${created}, updated=${updated}, skipped=${skipped}`)
+  console.log(`[${kw}#${page}] fetched ${photos.length} → created=${created}, updated=${updated}, skipped=${skipped}`)
 }
 
 console.log(`done: created=${created}, updated=${updated}, skipped=${skipped}`)

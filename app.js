@@ -44,6 +44,24 @@ app.use("/v1/albums", albumRoutes);
 app.use("/v1/link-posts", linkPostRoutes);
 app.use("/v1", likesCommentsRoutes);
 
+// ---------- 前端静态托管（演示/生产：后端直接服务构建产物） ----------
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// 默认取 C:\Vue-project 下同级的 wallpapers-mage-web/dist，可用环境变量 FRONTEND_DIST 覆盖
+// __dirname = Wallpapers_MAGE 根目录（app.js 在根），向上一层到 C:\Vue-project
+const distDir = process.env.FRONTEND_DIST || path.resolve(__dirname, "..", "wallpapers-mage-web", "dist");
+if (existsSync(distDir)) {
+  app.use(express.static(distDir));
+  // SPA 回退：GET 且非 API/上传的请求都返回 index.html（前端路由交给 Vue Router）
+  // 注意：Express 5 不支持 app.get("*")，用中间件形式
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/v1") || req.path.startsWith("/uploads")) return next();
+    res.sendFile(path.join(distDir, "index.html"));
+  });
+}
+
 // ---------- 健康检查 ----------
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "Wallpapers MAGE API" });
